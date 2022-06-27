@@ -32,8 +32,8 @@ from setuptools import setup, find_packages
 
 setup(
     name="papermill_kubernetes_job_progress",
-    version="0.1",
-    url="",
+    version="0.2",
+    url="https://github.com/eurodatacube/papermill-kubernetes-job-progress",
     packages=find_packages(),
     install_requires=["papermill", "kubernetes"],
     entry_points={
