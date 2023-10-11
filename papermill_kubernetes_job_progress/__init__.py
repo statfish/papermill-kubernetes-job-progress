@@ -41,16 +41,17 @@ class KubernetesJobProgressEngine(NBClientEngine):
     conn = None
     cell_start_timestamp = None
     progress_future = None
-    notebook_id_key = os.environ['NOTEBOOK_ID_ENV_KEY']
+    subject = "progress"
+    notebook_id_key = "NOTEBOOK_ID"
+    try:
+        subject = os.environ['NATS_SUBJECT']
+        notebook_id_key = os.environ['NOTEBOOK_ID_ENV_KEY']
+    except KeyError as e:
+        pass
     notebook_id = os.environ[notebook_id_key]
     nats_url = os.environ['NATS_URL']
     nats_user = os.environ['NATS_USER']
     nats_password = os.environ['NATS_PASSWORD']
-    subject = "progress"
-    try:
-        subject = os.environ['NATS_SUBJECT']
-    except KeyError as e:
-        pass
 
     @classmethod
     async def nats_connect(cls):
