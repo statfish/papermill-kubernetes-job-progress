@@ -32,10 +32,10 @@ from setuptools import setup, find_packages
 
 setup(
     name="papermill_kubernetes_job_progress",
-    version="0.2",
-    url="https://github.com/eurodatacube/papermill-kubernetes-job-progress",
+    version="1.0",
+    url="https://github.com/statfish/papermill-kubernetes-job-progress",
     packages=find_packages(),
-    install_requires=["papermill", "kubernetes"],
+    install_requires=["papermill", "kubernetes", "nats-py"],
     entry_points={
         "papermill.engine": [
             "kubernetes_job_progress=papermill_kubernetes_job_progress:KubernetesJobProgressEngine"
