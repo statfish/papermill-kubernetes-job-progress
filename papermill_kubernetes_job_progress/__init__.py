@@ -43,11 +43,17 @@ class KubernetesJobProgressEngine(NBClientEngine):
     progress_future = None
     subject = "progress"
     notebook_id_key = "NOTEBOOK_ID"
+
     try:
-        subject = os.environ['NATS_SUBJECT']
         notebook_id_key = os.environ['NOTEBOOK_ID_ENV_KEY']
     except KeyError as e:
         pass
+
+    try:
+        subject = os.environ['NATS_SUBJECT']
+    except KeyError as e:
+        pass
+
     notebook_id = os.environ[notebook_id_key]
     nats_url = os.environ['NATS_URL']
     nats_user = os.environ['NATS_USER']
@@ -58,7 +64,8 @@ class KubernetesJobProgressEngine(NBClientEngine):
         if cls.conn is None:
             cls.conn = await cls.nc.connect(cls.nats_url,
                                             user=cls.nats_user,
-                                            password=cls.nats_password)
+                                            password=cls.nats_password,
+                                            verbose=True)
 
     @classmethod
     async def nats_send(cls, cell_index, cell_count, start_time, end_time, duration, progress):
@@ -74,6 +81,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
             'progress': progress
         }
         await cls.nc.publish(cls.subject, bytes(json.dumps(msg, default=str), 'utf-8'))
+        await cls.nc.close()
 
     @classmethod
     def execute_managed_notebook(cls, nb_man, *args, **kwargs):

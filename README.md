@@ -36,12 +36,18 @@ docker run -p 4222:4222 -ti nats:latest -V
 Set the various environment variables required to connect:
 
 ```
-export NATS_URL=nats://localhost:4222 (or whatever works for you)
-export NATS_USER=user (or whatever works for you)
-export NATS_PASSWORD=pass (or whatever works for you)
-export NOTEBOOK_ID_ENV_KEY=NOTEBOOK_ID (optional)
+export NATS_URL=nats://localhost:4222 
+export NATS_USER=user
+export NATS_PASSWORD=pass
 export NOTEBOOK_ID=test
+export NOTEBOOK_ID_ENV_KEY=NOTEBOOK_ID (optional)
 export NATS_SUBJECT= (optional)
+```
+
+Install the plugin:
+
+```
+python setup.py install
 ```
 
 Invoke as follows:
