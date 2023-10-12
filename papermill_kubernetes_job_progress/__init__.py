@@ -35,12 +35,18 @@ from papermill.engines import NBClientEngine
 import json
 from datetime import datetime
 
+import logging
+
+logger = logging.getLogger("papermill")
+
 
 class KubernetesJobProgressEngine(NBClientEngine):
+    print("Loaded KubernetesJobProgressEngine")
     nc = NATS()
     conn = None
     cell_start_timestamp = None
     progress_future = None
+    nats_debug = None
     subject = "progress"
     notebook_id_key = "NOTEBOOK_ID"
 
@@ -59,13 +65,23 @@ class KubernetesJobProgressEngine(NBClientEngine):
     nats_user = os.environ['NATS_USER']
     nats_password = os.environ['NATS_PASSWORD']
 
+    try:
+        nats_debug = os.environ['NATS_DEBUG']
+        if nats_debug:
+            os.environ['PYTHONASYNCIODEBUG'] = '1'
+    except KeyError as e:
+        pass
+
     @classmethod
     async def nats_connect(cls):
-        if cls.conn is None:
-            cls.conn = await cls.nc.connect(cls.nats_url,
-                                            user=cls.nats_user,
-                                            password=cls.nats_password,
-                                            verbose=True)
+        if cls.nats_debug:
+            print(f"Connecting to {cls.nats_url}...")
+        await cls.nc.connect(cls.nats_url,
+                             user=cls.nats_user,
+                             password=cls.nats_password,
+                             verbose=True)
+        if cls.nats_debug:
+            print(f"Connected to {cls.nats_url}")
 
     @classmethod
     async def nats_send(cls, cell_index, cell_count, start_time, end_time, duration, progress):
@@ -81,7 +97,8 @@ class KubernetesJobProgressEngine(NBClientEngine):
             'progress': progress
         }
         await cls.nc.publish(cls.subject, bytes(json.dumps(msg, default=str), 'utf-8'))
-        await cls.nc.close()
+        if cls.nats_debug:
+            print(f"sent {json.dumps(msg, default=str)}")
 
     @classmethod
     def execute_managed_notebook(cls, nb_man, *args, **kwargs):
@@ -112,6 +129,8 @@ class KubernetesJobProgressEngine(NBClientEngine):
         nb_man.cell_complete = patched_cell_complete
         nb_man.cell_start = patched_cell_start
 
-        if cls.progress_future:
-            asyncio.wait_for(cls.progress_future, 10)
+        # if cls.progress_future:
+        #     asyncio.wait_for(cls.progress_future, 10)
+        #     asyncio.ensure_future(cls.nc.close())
+
         return super().execute_managed_notebook(nb_man, *args, **kwargs)
