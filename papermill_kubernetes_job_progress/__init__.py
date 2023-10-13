@@ -148,7 +148,6 @@ class KubernetesJobProgressEngine(NBClientEngine):
                     -1,
                     type='error'),
                 loop=cls.loop)
-            cls.loop.stop()
             orig_cell_exception(cell, cell_index, **kwargs)
 
         def patched_cell_start(cell, cell_index, **kwargs):
