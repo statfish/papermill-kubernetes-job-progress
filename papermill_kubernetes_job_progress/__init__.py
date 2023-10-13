@@ -101,7 +101,16 @@ class KubernetesJobProgressEngine(NBClientEngine):
             print(f"sent {json.dumps(msg, default=str)}")
 
     @classmethod
-    def execute_managed_notebook(cls, nb_man, *args, **kwargs):
+    def execute_managed_notebook(cls,
+                                 nb_man,
+                                 kernel_name,
+                                 log_output=True,
+                                 stdout_file=None,
+                                 stderr_file=None,
+                                 start_timeout=60,
+                                 execution_timeout=None,
+                                 **kwargs):
+
         orig_cell_complete = nb_man.cell_complete
         orig_cell_start = nb_man.cell_start
 
@@ -133,4 +142,11 @@ class KubernetesJobProgressEngine(NBClientEngine):
         #     asyncio.wait_for(cls.progress_future, 10)
         #     asyncio.ensure_future(cls.nc.close())
 
-        return super().execute_managed_notebook(nb_man, *args, **kwargs)
+        return super().execute_managed_notebook(nb_man,
+                                                kernel_name,
+                                                log_output=True,
+                                                stdout_file=None,
+                                                stderr_file=None,
+                                                start_timeout=60,
+                                                execution_timeout=None,
+                                                **kwargs)
