@@ -74,6 +74,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
 
     @classmethod
     async def nats_connect(cls):
+        print(f"nats_connect")
         if cls.nats_debug:
             print(f"Connecting to {cls.nats_url}...")
         await cls.nc.connect(cls.nats_url,
@@ -85,6 +86,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
 
     @classmethod
     async def nats_send(cls, cell_index, cell_count, start_time, end_time, duration, progress):
+        print(f"nats_send {cell_index}")
         await cls.nats_connect()
         msg = {
             'notebook_id': cls.notebook_id,
@@ -113,12 +115,15 @@ class KubernetesJobProgressEngine(NBClientEngine):
 
         orig_cell_complete = nb_man.cell_complete
         orig_cell_start = nb_man.cell_start
+        print(f"execute_managed_notebook()")
 
         def patched_cell_start(cell, cell_index, **kwargs):
+            print(f"Patched cell start {cell_index}")
             cls.cell_start_timestamp = datetime.utcnow()
             orig_cell_start(cell, cell_index, **kwargs)
 
         def patched_cell_complete(cell, cell_index, **kwargs):
+            print(f"Patched cell complete {cell_index}")
             orig_cell_complete(cell, cell_index, **kwargs)
 
             ratio_progress = (cell_index + 1) / len(nb_man.nb.cells)
@@ -142,6 +147,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
         #     asyncio.wait_for(cls.progress_future, 10)
         #     asyncio.ensure_future(cls.nc.close())
 
+        print(f"Calling super...")
         return super().execute_managed_notebook(nb_man,
                                                 kernel_name,
                                                 log_output=True,
