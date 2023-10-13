@@ -54,7 +54,8 @@ class KubernetesJobProgressEngine(NBClientEngine):
     # If the event loop is not started (somewhere)
     # messages will not be sent
     #
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    done = False
 
     try:
         notebook_id_key = os.environ['NOTEBOOK_ID_ENV_KEY']
@@ -123,9 +124,21 @@ class KubernetesJobProgressEngine(NBClientEngine):
                                  execution_timeout=None,
                                  **kwargs):
 
+        print(f"execute_managed_notebook({kwargs})")
         orig_cell_complete = nb_man.cell_complete
         orig_cell_start = nb_man.cell_start
-        print(f"execute_managed_notebook({kwargs})")
+        orig_cell_exception = nb_man.cell_exception
+        orig_notebook_complete = nb_man.notebook_complete
+
+        def patched_notebook_complete(**kwargs):
+            print(f"Patched notebook_complete")
+            cls.loop.stop()
+            orig_notebook_complete(**kwargs)
+
+        def patched_cell_exception(cell, cell_index=None, **kwargs):
+            print(f"Patched cell exception {cell_index}")
+            cls.loop.stop()
+            orig_cell_exception(cell, cell_index, **kwargs)
 
         def patched_cell_start(cell, cell_index, **kwargs):
             print(f"Patched cell start {cell_index}")
@@ -153,9 +166,13 @@ class KubernetesJobProgressEngine(NBClientEngine):
                     progress),
                 loop=cls.loop)
             print(progress_future)
+            if progress == 100:
+                cls.loop.stop()
 
         nb_man.cell_complete = patched_cell_complete
         nb_man.cell_start = patched_cell_start
+        nb_man.cell_exception = patched_cell_exception
+        nb_man.notebook_complete = patched_notebook_complete
 
         # if cls.progress_future:
         #     asyncio.wait_for(cls.progress_future, 10)
