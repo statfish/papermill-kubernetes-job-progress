@@ -34,6 +34,7 @@ from nats.aio.client import Client as NATS
 from papermill.engines import NBClientEngine
 import json
 from datetime import datetime
+import threading
 
 import logging
 
@@ -108,6 +109,10 @@ class KubernetesJobProgressEngine(NBClientEngine):
             print(f"sent {json.dumps(msg, default=str)}")
 
     @classmethod
+    def run_loop(cls):
+        cls.loop.run_forever()
+
+    @classmethod
     def execute_managed_notebook(cls,
                                  nb_man,
                                  kernel_name,
@@ -138,7 +143,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
             cell_end_timestamp = datetime.utcnow()
             duration = cell_end_timestamp - cls.cell_start_timestamp
             print(f"Duration is  {duration}")
-            progress_future = asyncio.ensure_future(
+            progress_future = asyncio.run_coroutine_threadsafe(
                 cls.nats_send(
                     cell_index,
                     len(nb_man.nb.cells),
@@ -156,6 +161,8 @@ class KubernetesJobProgressEngine(NBClientEngine):
         #     asyncio.wait_for(cls.progress_future, 10)
         #     asyncio.ensure_future(cls.nc.close())
 
+        #print("Starting progress thread")
+        #threading.Thread(target=lambda: cls.run_loop()).start()
         print(f"Calling super...")
         return super().execute_managed_notebook(nb_man,
                                                 kernel_name,
