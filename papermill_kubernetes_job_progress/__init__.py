@@ -92,12 +92,13 @@ class KubernetesJobProgressEngine(NBClientEngine):
             print(f"Connected to {cls.nats_url}")
 
     @classmethod
-    async def nats_send(cls, cell_index, cell_count, start_time, end_time, duration, progress):
+    async def nats_send(cls, cell_index, cell_count, start_time, end_time, duration, progress, type='progress'):
         print(f"nats_send {cell_index}")
         await cls.nats_connect()
         msg = {
             'notebook_id': cls.notebook_id,
             'timestamp': str(datetime.utcnow().isoformat()),
+            'type': type,
             'cell_index': cell_index,
             'cell_count': cell_count,
             'start': start_time.isoformat(),
@@ -136,7 +137,17 @@ class KubernetesJobProgressEngine(NBClientEngine):
             orig_notebook_complete(**kwargs)
 
         def patched_cell_exception(cell, cell_index=None, **kwargs):
-            print(f"Patched cell exception {cell_index}")
+            print(f"Patched cell exception {cell_index}: {kwargs}")
+            asyncio.run_coroutine_threadsafe(
+                cls.nats_send(
+                    cell_index,
+                    -1,
+                    datetime.now(),
+                    datetime.now(),
+                    -1,
+                    -1,
+                    type='error'),
+                loop=cls.loop)
             cls.loop.stop()
             orig_cell_exception(cell, cell_index, **kwargs)
 
