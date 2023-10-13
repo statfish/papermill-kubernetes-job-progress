@@ -129,9 +129,11 @@ class KubernetesJobProgressEngine(NBClientEngine):
             ratio_progress = (cell_index + 1) / len(nb_man.nb.cells)
             # progress is a value between 0 and 100
             progress = round(ratio_progress * 100)
+            print(f"Progress is {progress}%")
             cell_end_timestamp = datetime.utcnow()
             duration = cell_end_timestamp - cls.cell_start_timestamp
-            cls.progress_future = asyncio.ensure_future(
+            print(f"Duration is  {duration}")
+            progress_future = asyncio.ensure_future(
                 cls.nats_send(
                     cell_index,
                     len(nb_man.nb.cells),
@@ -139,6 +141,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
                     cell_end_timestamp,
                     duration,
                     progress))
+            print(progress_future)
 
         nb_man.cell_complete = patched_cell_complete
         nb_man.cell_start = patched_cell_start
