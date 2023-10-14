@@ -189,7 +189,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
         #     asyncio.ensure_future(cls.nc.close())
 
         print("Starting progress thread")
-        threading.Thread(target=cls.run_loop).start()
+        threading.Thread(target=cls.run_loop, daemon=True).start()
 
         print(f"Calling super...")
         return super().execute_managed_notebook(nb_man,
