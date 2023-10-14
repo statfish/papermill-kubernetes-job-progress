@@ -35,10 +35,13 @@ from papermill.engines import NBClientEngine
 import json
 from datetime import datetime
 import threading
+import functools
 
 import logging
 
 logger = logging.getLogger("papermill")
+
+from time import sleep
 
 
 class KubernetesJobProgressEngine(NBClientEngine):
@@ -107,12 +110,23 @@ class KubernetesJobProgressEngine(NBClientEngine):
             'progress': progress
         }
         await cls.nc.publish(cls.subject, bytes(json.dumps(msg, default=str), 'utf-8'))
+        await cls.nc.drain()
         if cls.nats_debug:
             print(f"sent {json.dumps(msg, default=str)}")
 
     @classmethod
     def run_loop(cls):
         cls.loop.run_forever()
+
+    @classmethod
+    async def stop_loop(cls):
+        tasks = asyncio.all_tasks(loop=cls.loop)
+        # print(tasks)
+        cls.loop.stop()
+        while cls.loop.is_running():
+            print("waiting for loop to stop")
+            await asyncio.sleep(1)
+        cls.loop.run_until_complete(asyncio.gather(*tasks))
 
     @classmethod
     def execute_managed_notebook(cls,
@@ -133,12 +147,12 @@ class KubernetesJobProgressEngine(NBClientEngine):
 
         def patched_notebook_complete(**kwargs):
             print(f"Patched notebook_complete")
-            cls.loop.stop()
+            asyncio.run_coroutine_threadsafe(cls.stop_loop(), loop=cls.loop)
             orig_notebook_complete(**kwargs)
 
         def patched_cell_exception(cell, cell_index=None, **kwargs):
             print(f"Patched cell exception {cell_index}: {kwargs}")
-            asyncio.run_coroutine_threadsafe(
+            f = asyncio.run_coroutine_threadsafe(
                 cls.nats_send(
                     cell_index,
                     -1,
@@ -176,8 +190,6 @@ class KubernetesJobProgressEngine(NBClientEngine):
                     progress),
                 loop=cls.loop)
             print(progress_future)
-            if progress == 100:
-                cls.loop.stop()
 
         nb_man.cell_complete = patched_cell_complete
         nb_man.cell_start = patched_cell_start
@@ -189,14 +201,19 @@ class KubernetesJobProgressEngine(NBClientEngine):
         #     asyncio.ensure_future(cls.nc.close())
 
         print("Starting progress thread")
-        threading.Thread(target=cls.run_loop, daemon=True).start()
+        threading.Thread(target=cls.run_loop, daemon=False).start()
 
         print(f"Calling super...")
-        return super().execute_managed_notebook(nb_man,
-                                                kernel_name,
-                                                log_output=True,
-                                                stdout_file=None,
-                                                stderr_file=None,
-                                                start_timeout=60,
-                                                execution_timeout=None,
-                                                **kwargs)
+        super().execute_managed_notebook(nb_man,
+                                         kernel_name,
+                                         log_output=True,
+                                         stdout_file=None,
+                                         stderr_file=None,
+                                         start_timeout=60,
+                                         execution_timeout=None,
+                                         **kwargs)
+
+        while len(asyncio.all_tasks(loop=cls.loop)) > 0:
+            print("sleeping")
+            print(asyncio.all_tasks(loop=cls.loop))
+            sleep(2)
