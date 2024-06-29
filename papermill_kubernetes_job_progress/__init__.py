@@ -53,11 +53,12 @@ class KubernetesJobProgressEngine(NBClientEngine):
     nats_debug = None
     subject = "progress"
     notebook_id_key = "NOTEBOOK_ID"
-    #
-    # If the event loop is not started (somewhere)
-    # messages will not be sent
-    #
-    loop = asyncio.new_event_loop()
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError as e:
+        loop = asyncio.new_event_loop()
+
     nats_error = False
     done = False
 
@@ -131,6 +132,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
         if cls.nats_error:
             print("Couldn't connect")
             return
+
         msg = {
             'notebook_id': cls.notebook_id,
             'timestamp': str(datetime.utcnow().isoformat()),
@@ -142,6 +144,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
             'duration': duration,
             'progress': progress
         }
+
         await cls.nc.publish(cls.subject, bytes(json.dumps(msg, default=str), 'utf-8'))
         if cls.nats_debug:
             print(f"sent {json.dumps(msg, default=str)}")
@@ -253,4 +256,3 @@ class KubernetesJobProgressEngine(NBClientEngine):
             print("sleeping")
             print(asyncio.all_tasks(loop=cls.loop))
             sleep(2)
-
