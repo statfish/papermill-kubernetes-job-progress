@@ -125,10 +125,8 @@ class KubernetesJobProgressEngine(NBClientEngine):
 
     @classmethod
     async def nats_send(cls, cell_index, cell_count, start_time, end_time, duration, progress, type='progress'):
-        if cls.nats_error:
-            return
         print(f"nats_send {cell_index}")
-        await cls.nats_connect()
+
         if cls.nats_error:
             print("Couldn't connect")
             return
@@ -146,11 +144,13 @@ class KubernetesJobProgressEngine(NBClientEngine):
         }
 
         await cls.nc.publish(cls.subject, bytes(json.dumps(msg, default=str), 'utf-8'))
+
         if cls.nats_debug:
             print(f"sent {json.dumps(msg, default=str)}")
 
     @classmethod
-    def run_loop(cls):
+    async def run_loop(cls):
+        await cls.nats_connect()
         cls.loop.run_forever()
 
     @classmethod
@@ -252,6 +252,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
                                          **kwargs)
 
         asyncio.run_coroutine_threadsafe(cls.stop_loop(), loop=cls.loop)
+
         while not cls.nats_error and len(asyncio.all_tasks(loop=cls.loop)) > 0:
             print("sleeping")
             print(asyncio.all_tasks(loop=cls.loop))
