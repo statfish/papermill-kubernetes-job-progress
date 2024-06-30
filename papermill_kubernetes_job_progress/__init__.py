@@ -54,10 +54,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
     subject = "progress"
     notebook_id_key = "NOTEBOOK_ID"
 
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError as e:
-        loop = asyncio.new_event_loop()
+    loop = asyncio.new_event_loop()
 
     nats_error = False
     done = False
@@ -96,7 +93,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
     @classmethod
     async def reconnected_cb(cls, e):
         print(e)
-        print("CONNECTED");
+        print("CONNECTED")
 
     @classmethod
     async def nats_connect(cls):
@@ -149,8 +146,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
             print(f"sent {json.dumps(msg, default=str)}")
 
     @classmethod
-    async def run_loop(cls):
-        await cls.nats_connect()
+    def run_loop(cls):
         cls.loop.run_forever()
 
     @classmethod
@@ -240,6 +236,7 @@ class KubernetesJobProgressEngine(NBClientEngine):
 
         print("Starting progress thread")
         threading.Thread(target=cls.run_loop, daemon=True).start()
+        asyncio.run_coroutine_threadsafe(cls.nats_connect(), loop=cls.loop)
 
         print(f"Calling super...")
         super().execute_managed_notebook(nb_man,
